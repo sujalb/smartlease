@@ -1,0 +1,11 @@
+boto3==1.26.90
+langchain==0.0.184
+openai==0.27.2
+qdrant-client==1.1.1
+python-dotenv==1.0.0
+unstructured
+pdf2image
+pytesseract
+python-magic-bin==0.4.14
+pypdf
+tiktoken

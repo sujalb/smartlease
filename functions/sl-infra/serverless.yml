@@ -1,0 +1,48 @@
+service: smartlease-file-upload
+
+provider:
+  name: aws
+  runtime: python3.9
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-2'}
+
+resources:
+  Resources:
+    UploadBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: smartlease-uploads-${self:provider.stage}
+        AccessControl: Private
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+
+    UploadBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref UploadBucket
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Sid: DenyHTTP
+              Effect: Deny
+              Principal: '*'
+              Action: 's3:*'
+              Resource: 
+                - !GetAtt UploadBucket.Arn
+                - !Join ['', [!GetAtt UploadBucket.Arn, '/*']]
+              Condition:
+                Bool:
+                  aws:SecureTransport: false
+
+outputs:
+  UploadBucketName:
+    Value: !Ref UploadBucket
+    Export:
+      Name: ${self:service}-${self:provider.stage}-client-upload-bucket-name

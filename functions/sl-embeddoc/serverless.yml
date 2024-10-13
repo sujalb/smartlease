@@ -1,0 +1,62 @@
+service: sl-embeddoc
+
+provider:
+  name: aws
+  runtime: python3.9
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-2'}
+  environment:
+    QDRANT_HOST: ${ssm:/smartlease/${self:provider.stage}/qdrant_host}
+    QDRANT_API_KEY: ${ssm:/smartlease/${self:provider.stage}/qdrant_api_key~true}
+    OPENAI_API_KEY: ${ssm:/smartlease/${self:provider.stage}/openai_api_key~true}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - ssm:GetParameter
+            - ssm:GetParameters
+          Resource: 
+            - arn:aws:ssm:${self:provider.region}:*:parameter/smartlease/${self:provider.stage}/*
+
+functions:
+  embedDocument:
+    handler: handler.embed_document
+    events:
+      - s3:
+          bucket: smartlease.client.upload
+          event: s3:ObjectCreated:*
+          existing: true
+    timeout: 300  # 5 minutes
+    memorySize: 1024  # 1 GB
+
+resources:
+  Resources:
+    LambdaInvokePermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: !GetAtt EmbedDocumentLambdaFunction.Arn
+        Action: lambda:InvokeFunction
+        Principal: s3.amazonaws.com
+        SourceArn: arn:aws:s3:::smartlease.client.upload
+
+package:
+  individually: true
+  exclude:
+    - node_modules/**
+    - venv/**
+  include:
+    - handler.py
+    - requirements.txt
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    zip: true
+    slim: true
+    noDeploy:
+      - boto3
+      - botocore
