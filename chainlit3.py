@@ -23,8 +23,8 @@ load_dotenv()
 
 # Initialize Qdrant client
 openai_api_key = os.getenv("OPENAI_API_KEY")
-qdrant_api_key = os.getenv("QDRANT_API_KEY")
-qdrant_url = os.getenv("QDRANT_URL")
+qdrant_api_key = os.getenv("QDRANT_API_KEY2")
+qdrant_url = os.getenv("QDRANT_URL2")
 
 qdrant_client = QdrantClient(
     url=qdrant_url,
@@ -70,15 +70,12 @@ async def main(message: cl.Message):
     logger.info(f"Received query: {query}")
 
     try:
-        # First, extract the tenant name from the query
-        # This is a simple example; you might want to use a more sophisticated method
         tenant_name = extract_tenant_name(query)
         
         if not tenant_name:
             await cl.Message(content="Please specify a tenant name in your query.").send()
             return
 
-        # Use the vector store to get the most similar document IDs, filtered by tenant name
         search_result = vector_store.similarity_search_with_score(
             query,
             k=5,
@@ -92,8 +89,9 @@ async def main(message: cl.Message):
             )
         )
         
-        # Retrieve full documents from Qdrant
         docs = []
+        s3_urls = set()
+        metadata_info = {}
         for doc, score in search_result:
             point_id = doc.metadata['_id']
             qdrant_doc = qdrant_client.retrieve(collection_name, [point_id])[0]
@@ -101,30 +99,44 @@ async def main(message: cl.Message):
             metadata = {
                 'source': qdrant_doc.payload.get('source', 'Unknown'),
                 'page': qdrant_doc.payload.get('page', 'N/A'),
-                'tenant_name': qdrant_doc.payload.get('tenant_name', 'Unknown')
+                'tenant_name': qdrant_doc.payload.get('tenant_name', 'Unknown'),
+                's3_url': qdrant_doc.payload.get('s3_url', 'No direct link available'),
+                'lease_start': qdrant_doc.payload.get('lease_start', 'Unknown'),
+                'lease_end': qdrant_doc.payload.get('lease_end', 'Unknown'),
+                'rent_amount': qdrant_doc.payload.get('rent_amount', 'Unknown')
             }
             docs.append(Document(page_content=content, metadata=metadata))
+            s3_urls.add(metadata['s3_url'])
+            metadata_info = metadata  # Store metadata for later use
 
-        # Format context for the AI
         context = "\n\n".join([f"Document {i+1} (Source: {doc.metadata['source']}, Page: {doc.metadata['page']}, Tenant: {doc.metadata['tenant_name']}):\n{doc.page_content}" for i, doc in enumerate(docs)])
+
+        # Include metadata in the prompt
+        metadata_context = f"Metadata for {tenant_name}:\nLease Start: {metadata_info['lease_start']}\nLease End: {metadata_info['lease_end']}\nRent Amount: {metadata_info['rent_amount']}\n\n"
         
-        logger.info(f"Retrieved context:\n{context}")
+        structured_prompt = f"""Based on the following context and metadata, provide a response to the question in this format:
+        1. A clear, concise answer to the question, using both the metadata and document content.
+        2. The source of the information (metadata or specific section in the document).
+        3. If applicable, the specific section in the document where this information is present.
 
-        # Use the LLMChain to generate the answer
-        response = llm_chain.run(context=context, question=query)
+        Metadata:
+        {metadata_context}
 
-        logger.info(f"Generated response: {response}")
-        
-        # Prepare the response message
-        response_message = f"{response}\n\nRelevant context for tenant {tenant_name}:"
-        for i, doc in enumerate(docs):
-            source = doc.metadata.get('source', 'Unknown')
-            page = doc.metadata.get('page', 'N/A')
-            tenant = doc.metadata.get('tenant_name', 'Unknown')
-            content = doc.page_content[:500] if doc.page_content else "No content available"
-            response_message += f"\n\nSource {i+1} (Source: {source}, Page: {page}, Tenant: {tenant}):\n{content}..."
+        Document Context:
+        {context}
 
-        await cl.Message(content=response_message).send()
+        Question: {query}
+
+        Structured Answer:"""
+
+        response = llm_chain.run(context=structured_prompt, question=query)
+
+        # Format the final response
+        final_response = f"Query: {query}\n\n{response}\n\nFull lease document(s):"
+        for url in s3_urls:
+            final_response += f"\n- {url}"
+
+        await cl.Message(content=final_response).send()
 
     except Exception as e:
         error_message = f"An error occurred: {str(e)}"

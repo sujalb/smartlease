@@ -9,8 +9,8 @@ load_dotenv()
 # Initialize Qdrant client
 
 qdrant_client = QdrantClient(
-    url=os.getenv("QDRANT_URL"),
-    api_key=os.getenv("QDRANT_API_KEY")
+    url=os.getenv("QDRANT_URL2"),
+    api_key=os.getenv("QDRANT_API_KEY2")
 )
 
 # Define your collection name
