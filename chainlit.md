@@ -1,14 +1,9 @@
-# Welcome to Chainlit! 🚀🤖
+# Welcome to SmartLease AI Assistant
 
-Hi there, Developer! 👋 We're excited to have you on board. Chainlit is a powerful tool designed to help you prototype, debug and share applications built on top of LLMs.
+This AI assistant is designed to help you with queries about your lease documents. Feel free to ask any questions about lease terms, dates, or other details.
 
-## Useful Links 🔗
+## How to use
 
-- **Documentation:** Get started with our comprehensive [Chainlit Documentation](https://docs.chainlit.io) 📚
-- **Discord Community:** Join our friendly [Chainlit Discord](https://discord.gg/ZThrUxbAYw) to ask questions, share your projects, and connect with other developers! 💬
-
-We can't wait to see what you create with Chainlit! Happy coding! 💻😊
-
-## Welcome screen
-
-To modify the welcome screen, edit the `chainlit.md` file at the root of your project. If you do not want a welcome screen, just leave this file empty.
+1. Type your question in the chat box below.
+2. Make sure to include the tenant's name in your query.
+3. The AI will search through the relevant documents and provide an answer.

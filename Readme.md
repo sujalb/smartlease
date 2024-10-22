@@ -48,14 +48,14 @@ serverless deploy --stage production --region us-west-2
 ## List of other commands
 ```
 aws sts get-caller-identity
-chainlit run chainlit3.py
+chainlit run chainlit.py
 ```
 
 
 
 Questions to ask : 
 To get the correct lease information for a specific tenant, you should structure your questions to include the tenant's name. 
-Include the word "tenant", "renter", "lessee", "occupant", or "resident" followed by the full name.
+Include the word "tenant", "renter", "lee", "occupant", or "resident" followed by the full name.
 The name should have at least two parts (first and last name) and start with capital letters.
 
 Here are some examples of how to phrase your questions:

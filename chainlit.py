@@ -6,18 +6,23 @@ from langchain_community.vectorstores import Qdrant as QdrantVectorStore
 import chainlit as cl
 from langchain_openai import ChatOpenAI
 from langchain_qdrant import Qdrant
-from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.schema import Document
 import logging
 from qdrant_client.http import models as qdrant_models
 import re
+from langchain.prompts import PromptTemplate
 
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+print(f"Current working directory: {os.getcwd()}")
+print(f"Chainlit.md exists: {os.path.exists('chainlit.md')}")
+
+with open('chainlit.md', 'r', encoding='utf-8') as f:
+    print(f"Chainlit.md content:\n{f.read()}")
 
 
 # Load environment variables
@@ -34,7 +39,6 @@ qdrant_client = QdrantClient(
 )
 
 # Initialize OpenAI
-
 embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
 llm = ChatOpenAI(openai_api_key=openai_api_key)
 
@@ -46,21 +50,14 @@ vector_store = Qdrant(
     embeddings=embeddings,
 )
 
+# Create a simple prompt template
+prompt_template = PromptTemplate(
+    input_variables=["query"],
+    template="Answer the following question: {query}"
+)
 
-# Define a prompt template that encourages using the context
-prompt_template = """You are an AI assistant specializing in analyzing lease documents. Use the following context to answer the question. If the answer is found in the context, provide it and cite the source. If not found, say you don't have enough information to answer.
-
-Context:
-{context}
-
-Question: {question}
-
-Answer: """
-
-PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-
-# Create an LLMChain
-llm_chain = LLMChain(llm=llm, prompt=PROMPT)
+# Create an LLMChain with the prompt template
+llm_chain = LLMChain(llm=llm, prompt=prompt_template)
 
 # Set favicon and logo paths
 #favicon_path = "functions/sl-utils/resources/favicon.ico"
@@ -150,7 +147,8 @@ Question: {query}
 
 Structured Answer:"""
 
-        response = llm_chain.run(context=structured_prompt, question=query)
+        # Use the structured_prompt as the query for the llm_chain
+        response = llm_chain.run(query=structured_prompt)
 
         # Format the final response
         final_response = f"Query: {query}\n\n{response}\n\nFull lease document(s):"
