@@ -84,6 +84,7 @@ async def main(message: cl.Message):
 
     try:
         tenant_name = extract_tenant_name(query)
+        logger.info(f"Extracted tenant name: {tenant_name}")
         
         if not tenant_name:
             await cl.Message(content="Please specify a tenant name in your query.").send()
@@ -102,6 +103,10 @@ async def main(message: cl.Message):
             )
         )
         
+        if not search_result:
+            await cl.Message(content=f"No information found for tenant: {tenant_name}").send()
+            return
+
         docs = []
         s3_urls = set()
         metadata_info = {}
@@ -124,8 +129,13 @@ async def main(message: cl.Message):
 
         context = "\n\n".join([f"Document {i+1} (Source: {doc.metadata['source']}, Page: {doc.metadata['page']}, Tenant: {doc.metadata['tenant_name']}):\n{doc.page_content}" for i, doc in enumerate(docs)])
 
-        # Include metadata in the prompt
-        metadata_context = f"Metadata for {tenant_name}:\nLease Start: {metadata_info['lease_start']}\nLease End: {metadata_info['lease_end']}\nRent Amount: {metadata_info['rent_amount']}\n\n"
+        # Include metadata in the prompt, using .get() to provide default values
+        metadata_context = f"""Metadata for {tenant_name}:
+Lease Start: {metadata_info.get('lease_start', 'Unknown')}
+Lease End: {metadata_info.get('lease_end', 'Unknown')}
+Rent Amount: {metadata_info.get('rent_amount', 'Unknown')}
+
+"""
         
         structured_prompt = f"""Based on the following context and metadata, provide a response to the question in this format:
 1. A clear, concise answer to the question, using the most human-readable date format.
