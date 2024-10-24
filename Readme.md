@@ -49,6 +49,7 @@ serverless deploy --stage production --region us-west-2
 ```
 aws sts get-caller-identity
 chainlit run chainlit.py
+sudo docker run -p 7860:7860 --name smartlease-container smartlease-app
 ```
 
 
